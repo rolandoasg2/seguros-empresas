@@ -1,0 +1,342 @@
+tree /F
+
+APPS_PROPS D:\u\PROPERTIES
+
+curl http://localhost:8089/ms-pseg-cotizaciones-mantenedor/api/ms/v1/ping
+
+https://jsonviewer.stack.hu/?trk=public_post_comment-text
+
+1) WebLogic (WAR clásico, JNDI corporativo recomendado)
+
+Perfil: en la consola de WebLogic
+Servers → <Servidor> → Server Start → Arguments
+Agrega:
+
+-Dspring.profiles.active=qa    # o prod
+
+
+
+Context path: WebLogic usa el context root del WAR (el nombre de despliegue) o lo que definas en weblogic.xml.
+Si necesitas /cse-seguros-empresask, nombra el módulo así al desplegar o define el context root en el descriptor.
+
+DataSource (JNDI): crea el JDBC Data Source en WebLogic con el JNDI name que ya tienes en application.yml (java:comp/env/jdbc/ocimarcelo).
+
+Para Oracle OCI/wallet, instala los jars de Oracle (ojdbc, oraclepki, osdt_core, osdt_cert) en el dominio/servidor y configura el datasource con wallet (ruta montada en el servidor).
+
+Normas Banco: en prod ya tienes springdoc deshabilitado ✔ y logging por stdout (Dynatrace). Mantén JNDI (no credenciales en YAML).
+
+2) Tomcat en contenedor Docker (WAR en Tomcat externo, JNDI corporativo)
+
+Perfil: con variable de entorno en el contenedor:
+
+# docker-compose.yml
+services:
+  tomcat:
+    image: tomcat:10-jdk21
+    environment:
+      - SPRING_PROFILES_ACTIVE=qa        # o prod
+    volumes:
+      - ./cse-seguros-empresask.war:/usr/local/tomcat/webapps/cse-seguros-empresask.war
+      - ./docker/context.xml:/usr/local/tomcat/conf/context.xml        # JNDI
+      - ./docker/Wallet_BD01:/opt/wallet                               # wallet
+
+
+Context path: Tomcat toma el nombre del WAR (cse-seguros-empresask.war → /cse-seguros-empresask). Alternativamente, conf/Catalina/localhost/cse-seguros-empresask.xml.
+
+DataSource (JNDI): define el <Resource ...> en conf/context.xml apuntando al wallet/ruta. Debe coincidir con spring.datasource.jndi-name.
+
+Si usas Boot embebido (ejecutar el WAR con java -jar en Docker), no tendrás JNDI del contenedor: en ese caso usa JDBC directo por perfil (SPRING_DATASOURCE_URL, etc.) y monta el wallet para el driver.
+
+3) Azure (elige la variante según arquitectura)
+Opción A: App Service con Tomcat (WAR + JNDI)
+
+Perfil: en Configuration → Application settings agrega
+SPRING_PROFILES_ACTIVE = prod (o qa).
+
+Context path: el nombre del WAR define el path.
+
+JNDI: si usas el Tomcat de App Service, puedes incluir META-INF/context.xml dentro del WAR con el <Resource> JNDI (si no tienes acceso al conf/ del Tomcat administrado). El JNDI debe llamarse igual que en tu YAML.
+
+Wallet/Secrets: súbelos como Azure App Service Mounted Storage o App Settings (rutas), y referencia esas rutas en el <Resource>.
+
+Opción B: Azure Web App for Containers / Azure Container Apps / AKS (Docker)
+
+Perfil: variable de entorno del contenedor
+SPRING_PROFILES_ACTIVE=prod.
+
+Context path: igual que Docker/Tomcat (nombre del WAR) o en Boot embebido con server.servlet.context-path por perfil.
+
+JNDI:
+Si usas Tomcat en el contenedor, incluye tu context.xml y wallet como volúmenes/Secrets.
+
+Si usas Boot embebido, no tienes JNDI del servidor → usa JDBC directo con SPRING_DATASOURCE_* y monta el wallet como Secret/Volume.
+
+Kubernetes (AKS): define SPRING_PROFILES_ACTIVE en el Deployment, wallet como Secret montado, y si es Tomcat, un ConfigMap/Secret para context.xml.
+
+///////////////////////////////////////////////////////////////////7
+1. Configura Eclipse para usar Java 21
+Dado que no puedes cambiar JAVA_HOME, debes configurar Eclipse para que use el JDK 21 ubicado en D:\Program Files\Java\jdk-21 específicamente para tu proyecto.
+
+Agregar JDK 21 a Eclipse:
+
+Ve a Window → Preferences → Java → Installed JREs.
+Haz clic en Add → Selecciona Standard VM → Next.
+En JRE Home, selecciona el directorio D:\Program Files\Java\jdk-21.
+Asigna un nombre, por ejemplo, JDK 21, y haz clic en Finish.
+Asegúrate de que el JDK 21 esté marcado como predeterminado o disponible en la lista.
+
+
+Configura el proyecto para usar JDK 21:
+
+Haz clic derecho en tu proyecto en Eclipse → Properties → Java Build Path.
+En la pestaña Libraries, selecciona JRE System Library y haz clic en Edit.
+Selecciona Alternate JRE y elige JDK 21 (o el nombre que le diste).
+Si no aparece, selecciona Workspace default JRE (si configuraste JDK 21 como predeterminado) o agrega manualmente el JDK 21.
+Haz clic en Apply and Close.
+
+Configura el compilador de Java:
+
+En Properties → Java Compiler, asegúrate de que Compiler compliance level esté establecido en 21.
+Marca Enable project specific settings si es necesario.
+Haz clic en Apply.
+
+-------------sps------------------------
+create or replace PROCEDURE spCSEResumenSolicitudeseje_rolo(
+    P_IdUsuario IN NUMBER,
+    P_Fecha IN DATE,
+    P_Rol IN VARCHAR2,
+    
+    datosSolicitud OUT SYS_REFCURSOR, 
+    totalSolicitudesEnProceso OUT NUMBER,
+    totalSolicitudesEsperandoRespuesta OUT NUMBER,
+    totalCotizacionesAprobadas OUT NUMBER,
+    totalSolicitudesConObservaciones OUT NUMBER,
+    vcEstado OUT VARCHAR2,
+    vcEstadoCreacion OUT VARCHAR2
+)
+IS
+BEGIN
+    OPEN datosSolicitud FOR
+      SELECT 
+        '007' AS "idSolicitud",
+        TO_CHAR(SYSDATE-2, 'YYYY-MM-DD') AS "fechaCreacion",
+        'Farmacias Salud' AS "nombreContratante",
+        'Salud' AS "rubro",
+        'Responsabilidad Civil' AS "tipoSeguro",
+        'Marta Ríos' AS "coordinador",
+        'Juan Castro' AS "ejecutivo",
+        'Esperando Respuesta' AS "estadoSolicitud"
+      FROM dual;
+
+    -- Asignar valores a los parámetros de salida
+    totalSolicitudesEnProceso := 12;
+    totalSolicitudesEsperandoRespuesta := 7;
+    totalCotizacionesAprobadas := 9;
+    totalSolicitudesConObservaciones := 3;
+
+    vcEstado := 'OK';
+    vcEstadoCreacion := 'OK';
+
+EXCEPTION
+  WHEN OTHERS THEN
+    vcEstado := 'ERROR';
+    vcEstadoCreacion := 'Error: ' || SQLERRM;
+END spCSEResumenSolicitudeseje_rolo;
+
+commit;
+
+
+Ver JWT decodificados:
+https://jwt.ms/
+
+curl -v -X POST "http://localhost:8089/ms-pseg-cotizaciones-mantenedor/api/ms/v1/resumenSolicitudes" -H "Content-Type: application/json" -d "{\"idUsuario\": 101, \"fecha\": \"2025-08-08\", \"rol\": \"EJE\"}"
+
+curl -X POST "http://localhost:8089/BchSeguroEmpresa21/CSEResumenSolicitudes" -H "Content-Type: application/json" -d "{\"idUsuario\": 101, \"fecha\": \"2025-08-08\", \"rol\": \"SUP\"}"
+
+curl -X POST "http://localhost:8089/BchSeguroEmpresa21/CSEResumenSolicitudes" -H "Content-Type: application/json" -d "{\"idUsuario\": 101, \"fecha\": \"2025-08-08\", \"rol\": \"COOR\"}"
+
+documentacion:
+   https://bancodechile.atlassian.net/wiki/spaces/PATBDC/pages/1476526099/Arquetipo+-+Desarrollo+Microservicio+en+Contenedores
+   
+   
+   
+Ingreso solicitud:
+create or replace PROCEDURE spCSEingresoSolicitud_rolo (
+    p_json            IN  CLOB,        -- JSON completo de la solicitud
+    p_id_solicitud    OUT VARCHAR2,    -- ID generado (como texto)
+    vcEstado          OUT VARCHAR2,    -- 'OK' | 'ERROR'
+    vcEstadoCreacion  OUT VARCHAR2     -- 'OK' | mensaje de error
+)
+IS
+    /* ============================
+       Variables locales
+       ============================ */
+    v_id_solicitud        NUMBER;
+    v_id_rubro            NUMBER;
+    v_id_producto         NUMBER;
+    v_clausula            VARCHAR2(4000);
+    v_observacion         VARCHAR2(4000);
+    v_estado              VARCHAR2(50);
+    v_materia_asegurada   VARCHAR2(4000);
+    v_cuestionario_ruta   VARCHAR2(1000);
+    v_cuestionario_nombre VARCHAR2(255);
+BEGIN
+    /* ============================
+       0) Validación de entrada
+       ============================ */
+    IF p_json IS NULL OR NOT JSON_EXISTS(p_json, '$') THEN
+        p_id_solicitud   := NULL;
+        vcEstado         := 'ERROR';
+        vcEstadoCreacion := 'JSON nulo o mal formado';
+        RETURN;
+    END IF;
+
+    /* ============================
+       1) Nuevo ID (sin COMMIT)
+       ============================ */
+    SELECT rolo_seq_cse_solicitud.NEXTVAL
+      INTO v_id_solicitud
+      FROM dual;
+
+    /* ============================
+       2) Escalares desde JSON
+       ============================ */
+    SELECT
+        JSON_VALUE(p_json, '$.idRubro'                       RETURNING NUMBER          NULL ON ERROR),
+        JSON_VALUE(p_json, '$.idProducto'                    RETURNING NUMBER          NULL ON ERROR),
+        JSON_VALUE(p_json, '$.clausula'                      RETURNING VARCHAR2(4000)  NULL ON ERROR),
+        JSON_VALUE(p_json, '$.observacion'                   RETURNING VARCHAR2(4000)  NULL ON ERROR),
+        JSON_VALUE(p_json, '$.estado'                        RETURNING VARCHAR2(50)    NULL ON ERROR),
+        JSON_VALUE(p_json, '$.materiaAsegurada'              RETURNING VARCHAR2(4000)  NULL ON ERROR),
+        JSON_VALUE(p_json, '$.cuestionario.rutaArchivo'      RETURNING VARCHAR2(1000)  NULL ON ERROR),
+        JSON_VALUE(p_json, '$.cuestionario.nombreArchivo'    RETURNING VARCHAR2(255)   NULL ON ERROR)
+    INTO v_id_rubro, v_id_producto, v_clausula, v_observacion, v_estado,
+         v_materia_asegurada, v_cuestionario_ruta, v_cuestionario_nombre
+    FROM dual;
+
+    /* ============================
+       3) Cabecera (guarda JSON)
+       ============================ */
+    INSERT INTO rolo_cse_solicitud (
+        id_solicitud, id_rubro, id_producto, clausula, observacion,
+        estado, cuestionario_ruta, cuestionario_nombre,
+        materia_asegurada, payload_json
+    ) VALUES (
+        v_id_solicitud, v_id_rubro, v_id_producto, v_clausula, v_observacion,
+        v_estado, v_cuestionario_ruta, v_cuestionario_nombre,
+        v_materia_asegurada, p_json
+    );
+
+    /* ============================
+       4) Contratante (1:1)
+       ============================ */
+    INSERT INTO rolo_cse_contratante (
+        id_solicitud, rut, nombre, ap_paterno, ap_materno,
+        region, ciudad, comuna, calle, numero, depto_block, casa
+    )
+    SELECT
+        v_id_solicitud,
+        JSON_VALUE(p_json, '$.contratante.rut'             RETURNING VARCHAR2(20)   NULL ON ERROR),
+        JSON_VALUE(p_json, '$.contratante.nombre'          RETURNING VARCHAR2(100)  NULL ON ERROR),
+        JSON_VALUE(p_json, '$.contratante.apellidoPaterno' RETURNING VARCHAR2(100)  NULL ON ERROR),
+        JSON_VALUE(p_json, '$.contratante.apellidoMaterno' RETURNING VARCHAR2(100)  NULL ON ERROR),
+        JSON_VALUE(p_json, '$.contratante.region'          RETURNING VARCHAR2(100)  NULL ON ERROR),
+        JSON_VALUE(p_json, '$.contratante.ciudad'          RETURNING VARCHAR2(100)  NULL ON ERROR),
+        JSON_VALUE(p_json, '$.contratante.comuna'          RETURNING VARCHAR2(100)  NULL ON ERROR),
+        JSON_VALUE(p_json, '$.contratante.calle'           RETURNING VARCHAR2(200)  NULL ON ERROR),
+        JSON_VALUE(p_json, '$.contratante.numero'          RETURNING VARCHAR2(20)   NULL ON ERROR),
+        JSON_VALUE(p_json, '$.contratante.deptoBlock'      RETURNING VARCHAR2(50)   NULL ON ERROR),
+        JSON_VALUE(p_json, '$.contratante.casa'            RETURNING VARCHAR2(50)   NULL ON ERROR)
+    FROM dual;
+
+    /* ============================
+       5) Asegurados (N:1)
+       ============================ */
+    INSERT INTO rolo_cse_asegurado (
+        id_solicitud, rut, nombre, ap_paterno, ap_materno,
+        region, ciudad, comuna, calle, numero, depto_block, casa
+    )
+    SELECT
+        v_id_solicitud,
+        jt.rut, jt.nombre, jt.ap_paterno, jt.ap_materno,
+        jt.region, jt.ciudad, jt.comuna, jt.calle, jt.numero, jt.depto_block, jt.casa
+    FROM JSON_TABLE(
+        p_json,
+        '$.asegurados[*]'
+        COLUMNS (
+            rut         VARCHAR2(20)   PATH '$.rut',
+            nombre      VARCHAR2(100)  PATH '$.nombre',
+            ap_paterno  VARCHAR2(100)  PATH '$.apellidoPaterno',
+            ap_materno  VARCHAR2(100)  PATH '$.apellidoMaterno',
+            region      VARCHAR2(100)  PATH '$.region',
+            ciudad      VARCHAR2(100)  PATH '$.ciudad',
+            comuna      VARCHAR2(100)  PATH '$.comuna',
+            calle       VARCHAR2(200)  PATH '$.calle',
+            numero      VARCHAR2(20)   PATH '$.numero',
+            depto_block VARCHAR2(50)   PATH '$.deptoBlock',
+            casa        VARCHAR2(50)   PATH '$.casa'
+        )
+    ) jt;
+
+    /* ============================
+       6) Beneficiarios (N:1)
+       ============================ */
+    INSERT INTO rolo_cse_beneficiario (
+        id_solicitud, rut, nombre, ap_paterno, ap_materno,
+        region, ciudad, comuna, calle, numero, depto_block
+    )
+    SELECT
+        v_id_solicitud,
+        jt.rut, jt.nombre, jt.ap_paterno, jt.ap_materno,
+        jt.region, jt.ciudad, jt.comuna, jt.calle, jt.numero, jt.depto_block
+    FROM JSON_TABLE(
+        p_json,
+        '$.beneficiarios[*]'
+        COLUMNS (
+            rut         VARCHAR2(20)   PATH '$.rut',
+            nombre      VARCHAR2(100)  PATH '$.nombre',
+            ap_paterno  VARCHAR2(100)  PATH '$.apellidoPaterno',
+            ap_materno  VARCHAR2(100)  PATH '$.apellidoMaterno',
+            region      VARCHAR2(100)  PATH '$.region',
+            ciudad      VARCHAR2(100)  PATH '$.ciudad',
+            comuna      VARCHAR2(100)  PATH '$.comuna',
+            calle       VARCHAR2(200)  PATH '$.calle',
+            numero      VARCHAR2(20)   PATH '$.numero',
+            depto_block VARCHAR2(50)   PATH '$.deptoBlock'
+        )
+    ) jt;
+
+    /* ============================
+       7) Documentos (N:1)
+       ============================ */
+    INSERT INTO rolo_cse_documento (
+        id_solicitud, nombre_archivo, ruta_archivo
+    )
+    SELECT
+        v_id_solicitud,
+        jt.nombre_archivo, jt.ruta_archivo
+    FROM JSON_TABLE(
+        p_json,
+        '$.documentosSolicitados[*]'
+        COLUMNS (
+            nombre_archivo VARCHAR2(255)  PATH '$.nombreArchivo',
+            ruta_archivo   VARCHAR2(1000) PATH '$.rutaArchivo'
+        )
+    ) jt;
+
+    /* ============================
+       8) Éxito
+       ============================ */
+    p_id_solicitud   := TO_CHAR(v_id_solicitud);
+    vcEstado         := 'OK';
+    vcEstadoCreacion := 'OK';
+
+EXCEPTION
+    WHEN OTHERS THEN
+        p_id_solicitud   := NULL;
+        vcEstado         := 'ERROR';
+        vcEstadoCreacion := 'Error: ' || SQLERRM;
+        -- Sin COMMIT/ROLLBACK: lo maneja el caller (microservicio)
+END spCSEingresoSolicitud_rolo;
+ 
+   

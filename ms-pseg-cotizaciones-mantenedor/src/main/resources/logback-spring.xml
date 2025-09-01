@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logback alineado con arquetipo BCH:
+  - Mantener el fragmento [!dt dt.trace_id=%X{traceId:-},dt.span_id=%X{spanId:-}]
+  - ConsoleAppender con patrón legible + trazabilidad.
+-->
+<configuration scan="true" scanPeriod="30 seconds">
+
+  <property name="LOG_PATTERN"
+            value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - [!dt dt.trace_id=%X{traceId:-},dt.span_id=%X{spanId:-}] %msg%n%ex"/>
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>${LOG_PATTERN}</pattern>
+    </encoder>
+  </appender>
+
+  <!-- Nivel por defecto -->
+  <root level="INFO">
+    <appender-ref ref="STDOUT"/>
+  </root>
+
+  <!-- Ajustes comunes -->
+  <logger name="org.springframework" level="INFO"/>
+  <logger name="org.hibernate.SQL" level="WARN"/>
+  <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="WARN"/>
+  <logger name="cl.bch" level="DEBUG"/> <!-- Ajusta a INFO en prod si lo prefieres -->
+</configuration>

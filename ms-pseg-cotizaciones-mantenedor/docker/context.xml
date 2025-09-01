@@ -1,0 +1,8 @@
+<Context>
+    <Resource name="jdbc/ocimarcelo" auth="Container" type="javax.sql.DataSource"
+              factory="org.apache.tomcat.jdbc.pool.DataSourceFactory"
+              driverClassName="oracle.jdbc.OracleDriver"
+              url="jdbc:oracle:thin:@bd01_low?TNS_ADMIN=/u/Wallet_BD01"
+              maxTotal="20" maxIdle="10" maxWaitMillis="10000" />
+    <!-- Cumple con la Sección 2.3 del arquetipo: Conexión a Oracle OCI mediante JNDI -->
+</Context>

@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  seguros-empresas:
+    image: cse-seguros-empresask:1.0.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - D:/u/Wallet_BD01:/u/Wallet_BD01
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - TNS_ADMIN=/u/Wallet_BD01
+      - CATALINA_OPTS=-Xms512m -Xmx1024m --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED
+    container_name: seguros-empresas

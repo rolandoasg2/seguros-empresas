@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset
+    xmlns="http://pmd.github.io/ruleset/2.0.0"
+    name="BCH Base Ruleset (local, sin schemaLocation)">
+
+  <description>
+    Reglas base alineadas con el arquetipo BCH.
+    Este ruleset es 100% local (sin schemaLocation) para evitar descargas externas.
+    Cuando tengas VPN/bch-ms-parent, evalúa usar el ruleset corporativo.
+  </description>
+
+  <!-- Categorías recomendadas -->
+  <rule ref="category/java/bestpractices.xml"/>
+  <rule ref="category/java/codestyle.xml"/>
+  <rule ref="category/java/design.xml"/>
+  <rule ref="category/java/documentation.xml"/>
+  <rule ref="category/java/errorprone.xml"/>
+  <rule ref="category/java/performance.xml"/>
+
+</ruleset>

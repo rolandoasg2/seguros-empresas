@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- ============================
+       Parent temporal (SIN VPN)
+       ============================
+       TODO (cuando tengas VPN):
+       - Reemplazar por el parent corporativo:
+         <parent>
+           <groupId>cl.bch</groupId>
+           <artifactId>bch-ms-parent</artifactId>
+           <version>1.3.0</version>
+         </parent>
+       - Configurar el Nexus corporativo en <repositories> o en ~/.m2/settings.xml
+       - Esto habilita reglas BCH (PMD, Enforcer, Readme/Changelog/Contributors,
+         bannedImports, bannedDependencies, etc.)
+  -->
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.3.4</version>
+    <relativePath/>
+  </parent>
+
+  <!-- Info del proyecto (cumple con BCH - Package base y versión != 0.x.x) -->
+  <groupId>cl.bch</groupId>
+  <artifactId>ms-pseg-cotizaciones-mantenedor</artifactId>
+  <version>1.0.0</version>
+  <packaging>war</packaging>
+  <name>Seguros Empresas MS</name>
+  <description>Microservicio para seguros de empresas, integrado con base de datos Oracle OCI mediante JNDI</description>
+
+  <properties>
+    <java.version>21</java.version>
+    <spring-cloud.version>2023.0.3</spring-cloud.version>
+    <bch.fabrica>Arquitectura Tecnológica</bch.fabrica>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+    <!-- Flags para PMD según entorno -->
+    <pmd.failOnViolation>false</pmd.failOnViolation>     <!-- Local: NO romper el build -->
+    <pmd.includeTests>false</pmd.includeTests>           <!-- Local: ignora tests en PMD -->
+  </properties>
+
+  <!-- Dependencias base -->
+  <dependencies>
+    <!-- Web REST -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <!-- Tomcat para WAR (provisto por el contenedor) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-tomcat</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- JPA -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+
+    <!-- Driver Oracle -->
+    <dependency>
+      <groupId>com.oracle.database.jdbc</groupId>
+      <artifactId>ojdbc11</artifactId>
+      <version>23.5.0.24.07</version>
+    </dependency>
+
+    <!-- Actuator (/actuator/health, /actuator/info, etc.) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- OpenAPI / Swagger UI -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>2.6.0</version>
+    </dependency>
+
+    <!-- ============================
+         Observabilidad / Trazabilidad
+         ============================
+         - Micrometer + OTel bridge: habilita traceId/spanId en MDC (logback) y contexto.
+         - 'opentelemetry-exporter-otlp' se agrega en perfil bch-ci (QA/PROD).
+    -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-tracing</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-observation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-tracing-bridge-otel</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-api</artifactId>
+    </dependency>
+    <!-- NOTA: el exportador OTLP va en el perfil bch-ci para no “chatear” en local -->
+
+    <!-- Logging -->
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+    </dependency>
+
+    <!-- Testing -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Testing Fin -->
+    
+  </dependencies>
+
+  <!-- (Opcional) BOM de Spring Cloud -->
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring-cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <finalName>ms-pseg-cotizaciones-mantenedor</finalName>
+    <plugins>
+      <!-- WAR ejecutable -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <excludeDevtools>true</excludeDevtools>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Surefire: ejecuta *Test y *Tests -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+        <configuration>
+          <includes>
+            <include>**/*Test.java</include>
+            <include>**/*Tests.java</include>
+          </includes>
+          <reportsDirectory>${project.build.directory}/site</reportsDirectory>
+        </configuration>
+      </plugin>
+
+      <!-- PMD: categorías internas (no requiere archivo externo ni descargas) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>3.25.0</version>
+        <configuration>
+          <rulesets>
+            <ruleset>category/java/bestpractices.xml</ruleset>
+            <ruleset>category/java/codestyle.xml</ruleset>
+            <ruleset>category/java/design.xml</ruleset>
+            <ruleset>category/java/documentation.xml</ruleset>
+            <ruleset>category/java/errorprone.xml</ruleset>
+            <ruleset>category/java/performance.xml</ruleset>
+          </rulesets>
+          <linkXRef>false</linkXRef>
+          <printFailingErrors>true</printFailingErrors>
+          <failOnViolation>${pmd.failOnViolation}</failOnViolation>
+          <includeTests>${pmd.includeTests}</includeTests>
+          <skipEmptyReport>false</skipEmptyReport>
+          <excludes>
+            <exclude>**/dto/*.java</exclude>
+          </excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>check</goal>
+              <goal>cpd-check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Enforcer: versión Java y (luego) reglas corporativas -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>enforce-rules</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>21</version>
+                </requireJavaVersion>
+                <!--
+                TODO (cuando tengas VPN y migres a bch-ms-parent):
+                - Se habilitan reglas BCH: Readme/Changelog/Contributors/Package Base/Estructura Packages
+                - bannedDependencies / bannedImports
+                -->
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <!-- ============================
+       Perfiles según entorno
+       ============================ -->
+  <profiles>
+    <!-- Local por defecto (SIN VPN): PMD no rompe y sin exportador OTLP -->
+    <profile>
+      <id>local-no-vpn</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <pmd.failOnViolation>false</pmd.failOnViolation>
+        <pmd.includeTests>false</pmd.includeTests>
+      </properties>
+    </profile>
+
+    <!-- CI / QA / PROD (CON VPN):
+         - PMD estricto
+         - Agrega exportador OTLP para enviar trazas (si está configurado en yml/env)
+         - Cuando migres al parent corporativo, este perfil puede simplificarse
+    -->
+    <profile>
+      <id>bch-ci</id>
+      <properties>
+        <pmd.failOnViolation>true</pmd.failOnViolation>
+        <pmd.includeTests>true</pmd.includeTests>
+      </properties>
+      <dependencies>
+        <dependency>
+          <groupId>io.opentelemetry</groupId>
+          <artifactId>opentelemetry-exporter-otlp</artifactId>
+        </dependency>
+      </dependencies>
+    </profile>
+  </profiles>
+
+  <!-- Contributors (BCH - Contributors) -->
+  <developers>
+    <developer>
+      <id>tl</id>
+      <name>[Nombre del Tech Lead]</name>
+      <email>[email del TL]</email>
+      <roles>
+        <role>Tech Lead</role>
+      </roles>
+    </developer>
+    <developer>
+      <id>architect</id>
+      <name>[Nombre del Arquitecto]</name>
+      <email>[email del Arquitecto]</email>
+      <roles>
+        <role>Arquitecto</role>
+      </roles>
+    </developer>
+    <developer>
+      <id>po</id>
+      <name>[Nombre del Product Owner]</name>
+      <email>[email del PO]</email>
+      <roles>
+        <role>Product Owner</role>
+      </roles>
+    </developer>
+  </developers>
+</project>

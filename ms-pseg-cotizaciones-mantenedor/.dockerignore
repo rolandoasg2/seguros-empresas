@@ -1,0 +1,20 @@
+# Excluir archivos de Eclipse
+.classpath
+.project
+.settings/
+
+# Excluir directorios de build
+target/
+
+# Excluir archivos de Git
+.git/
+.gitignore
+.gitattributes
+
+# Excluir Maven Wrapper si no se usa en el contenedor
+mvnw
+mvnw.cmd
+.mvn/
+
+# Excluir archivos de documentación adicionales si no son necesarios
+HELP.md
